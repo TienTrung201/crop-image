@@ -22,7 +22,13 @@ function setCors(res, origin) {
   res.setHeader('Access-Control-Max-Age', '86400');
 }
 
-export default async function handler(req, res) {
+/**
+ * Lưu ý quan trọng:
+ * - Project của bạn không có `package.json` nên runtime Node trên Vercel thường mặc định CommonJS.
+ * - Nếu dùng `export default` (ESM) có thể làm function crash và Vercel trả 502.
+ * => Dùng `module.exports = ...` để chắc chắn chạy ổn định.
+ */
+module.exports = async function handler(req, res) {
   const origin = req.headers.origin;
   setCors(res, origin);
 
@@ -55,11 +61,19 @@ export default async function handler(req, res) {
 
     const text = await gasRes.text();
     let data;
-    try { data = JSON.parse(text); } catch { data = { ok: false, error: text }; }
+    try { data = JSON.parse(text); }
+    catch {
+      // GAS đôi khi trả HTML (redirect/login/error page). Cắt ngắn để response không quá nặng.
+      data = { ok: false, error: String(text).slice(0, 800) };
+    }
 
     if (!gasRes.ok || !data.ok) {
       const msg = data && data.error ? data.error : `GAS HTTP ${gasRes.status}`;
-      return res.status(502).json({ ok: false, error: msg });
+      return res.status(502).json({
+        ok: false,
+        error: msg,
+        gasStatus: gasRes.status
+      });
     }
 
     return res.status(200).json(data);
@@ -69,5 +83,5 @@ export default async function handler(req, res) {
       error: err && err.message ? err.message : String(err)
     });
   }
-}
+};
 
