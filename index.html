@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tool Crop &amp; Xuất Excel Đẹp</title>
+<style>
+  :root{
+    --bg:#f6f7fb;
+    --card:#fff;
+    --accent:#2b6ef6;
+    --muted:#657085;
+    --danger:#e05555;
+  }
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+    margin: 18px;
+    background: var(--bg);
+    color: #111;
+  }
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    grid-template-columns: 1fr 420px;
+    gap: 16px;
+  }
+  .panel {
+    background: var(--card);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(16, 24, 40, 0.06);
+  }
+  h2 {
+    margin: 0 0 8px;
+    font-size: 16px;
+  }
+  .controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .btn.ghost {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid rgba(43, 110, 246, 0.12);
+  }
+  .btn.green {
+    background: #16a34a;
+  }
+  .crop-area {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(90deg, #f2f4fb, #fff 60%);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }
+  .crop-area img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    cursor: crosshair;
+  }
+  .selection {
+    position: absolute;
+    border: 2px dashed rgba(43, 110, 246, 0.95);
+    background: rgba(43, 110, 246, 0.12);
+    display: none;
+    border-radius: 6px;
+  }
+  .info {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .table-wrap {
+    overflow: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  thead th {
+    background: #f8fafc;
+    padding: 10px;
+    border-bottom: 1px solid #eceef5;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  tbody tr {
+    background: #fff;
+    border-bottom: 1px solid #eef1f6;
+  }
+  td {
+    vertical-align: middle;
+    padding: 8px;
+  }
+  .thumb-img {
+    width: 120px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  .cell-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .xbtn {
+    background: var(--danger);
+    color: #fff;
+    border: 0;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .download-btn {
+    background: #fff;
+    border: 1px solid rgba(16, 24, 40, 0.06);
+    color: var(--accent);
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .send-status {
+    font-size: 12px;
+    margin-left: 8px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .send-status.sending { color: var(--accent); font-weight: 700; }
+  .send-status.ok { color: #16a34a; font-weight: 700; }
+  .send-status.err { color: var(--danger); font-weight: 700; }
+  textarea {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #e6e9f2;
+    padding: 8px;
+    border-radius: 6px;
+    font-family: inherit;
+    resize: none;
+    overflow: hidden;
+  }
+  .meta-small {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  label.input-label {
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: 8px;
+    user-select: none;
+  }
+  input[type=number] {
+    width: 80px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #e6e9f2;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  @media (max-width: 880px) {
+    .wrap {
+      grid-template-columns: 1fr;
+    }
+    table,
+    thead,
+    tbody,
+    th,
+    td,
+    tr {
+      display: block;
+    }
+    thead {
+      display: none;
+    }
+    tbody tr {
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
+    }
+    td {
+      display: flex;
+      padding: 6px;
+      align-items: flex-start;
+    }
+    td.label {
+      width: 30%;
+      font-weight: 600;
+      color: var(--muted);
+      padding-right: 8px;
+    }
+    td.content {
+      width: 70%;
+    }
+    .thumb-img {
+      width: 140px;
+      height: 100px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel" aria-labelledby="uploadCropTitle">
+      <h2 id="uploadCropTitle">Upload &amp; Crop</h2>
+      <div class="controls">
+        <label class="btn" for="fileInput">Chọn ảnh</label>
+        <input id="fileInput" type="file" accept="image/*" style="display:none" />
+        <button id="cropBtn" class="btn" type="button">Crop &amp; Thêm hàng</button>
+        <button id="clearAll" class="btn ghost" type="button">Xóa tất cả</button>
+        <label class="input-label" for="imgWidth">Width (px):</label>
+        <input type="number" id="imgWidth" min="10" value="100" />
+        <label class="input-label" for="imgHeight">Height (px):</label>
+        <input type="number" id="imgHeight" min="10" value="70" />
+        <label class="input-label" for="scaleFactor">Scale crop:</label>
+        <input type="number" id="scaleFactor" min="1" max="3" step="1" value="2" style="width:60px" />
+        <button id="sendToSheets" class="btn" type="button">Gửi lên Google Sheets</button>
+        <button id="exportExcel" class="btn green" style="margin-left:auto" type="button">
+          Tải Excel có ảnh
+        </button>
+      </div>
+      <section class="panel" aria-labelledby="qualitySettingsTitle" style="margin-top:0">
+        <h2 id="qualitySettingsTitle">Cài đặt chất lượng ảnh</h2>
+        <label class="input-label" style="display:flex;align-items:center;gap:6px">
+          <input id="enableSharpen" type="checkbox" /> Tăng độ nét (Sharpen)
+        </label>
+        <div id="sharpenSettings" style="display:none; gap:6px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+          <label class="input-label" for="sharpenIntensity" style="margin:0">Cường độ</label>
+          <input id="sharpenIntensity" type="range" min="0" max="100" value="30" disabled style="width:180px" />
+          <span id="sharpenValue" style="min-width:35px;display:inline-block">30</span>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="configTitle" style="margin-top:0">
+        <h2 id="configTitle">⚙️ Cấu hình Google Sheets</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:200px">
+            <label class="input-label" for="webAppUrlInput" style="margin:0;display:block;margin-bottom:4px">Web App URL</label>
+            <input id="webAppUrlInput" type="text" placeholder="https://script.google.com/macros/d/..." style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #e6e9f2;font-family:monospace;font-size:12px" />
+          </div>
+          <div style="flex:1;min-width:200px">
+            <label class="input-label" for="sheetIdInput" style="margin:0;display:block;margin-bottom:4px">Google Sheet ID</label>
+            <input id="sheetIdInput" type="text" placeholder="1a2b3c4d5e..." style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #e6e9f2;font-family:monospace;font-size:12px" />
+          </div>
+          <button id="saveLinkBtn" class="btn" type="button" style="padding:6px 12px">Lưu</button>
+        </div>
+        <p class="meta-small" style="margin-top:6px">💡 Cấu hình sẽ được lưu trên trình duyệt này</p>
+      </section>
+      <div class="crop-area" id="cropArea">
+        <img id="previewImg" src="" alt="Ảnh xem trước để crop" />
+        <div class="overlay" id="overlay" aria-label="Vùng chọn crop"></div>
+        <div class="selection" id="selection" aria-hidden="true"></div>
+      </div>
+      <p style="margin-top:8px" class="info" id="status" role="status" aria-live="polite">Chọn ảnh để bắt đầu</p>
+    </section>
+    <section class="panel" aria-labelledby="productListTitle">
+      <h2 id="productListTitle">Danh sách sản phẩm (Bảng)</h2>
+      <div class="table-wrap" style="max-height:70vh;overflow:auto">
+        <table id="dataTable" role="table">
+          <thead>
+            <tr>
+              <th scope="col" style="width:180px">Hình ảnh</th>
+              <th scope="col">Model</th>
+              <th scope="col">Thông số sản phẩm</th>
+              <th scope="col" style="width:120px">Chức năng</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <!-- rows -->
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:8px" class="meta-small">Các textarea sẽ tự động mở rộng khi xuống dòng.</p>
+    </section>
+  </div>
+<script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+<script>
+const fileInput = document.getElementById('fileInput');
+const previewImg = document.getElementById('previewImg');
+const overlay = document.getElementById('overlay');
+const selection = document.getElementById('selection');
+const cropBtn = document.getElementById('cropBtn');
+const tbody = document.getElementById('tbody');
+const status = document.getElementById('status');
+const clearAll = document.getElementById('clearAll');
+const exportExcelBtn = document.getElementById('exportExcel');
+const sendToSheetsBtn = document.getElementById('sendToSheets');
+const imgWidthInput = document.getElementById('imgWidth');
+const imgHeightInput = document.getElementById('imgHeight');
+const scaleFactorInput = document.getElementById('scaleFactor');
+const enableSharpen = document.getElementById('enableSharpen');
+const sharpenSettings = document.getElementById('sharpenSettings');
+const sharpenIntensity = document.getElementById('sharpenIntensity');
+const sharpenValue = document.getElementById('sharpenValue');
+const webAppUrlInput = document.getElementById('webAppUrlInput');
+const sheetIdInput = document.getElementById('sheetIdInput');
+const saveLinkBtn = document.getElementById('saveLinkBtn');
+
+let currentImage = null;
+let drag = { active:false, startX:0, startY:0 };
+let cropRect = null;
+let rowIdCounter = 0;
+let rows = [];
+let isSendingToSheets = false;
+
+function setStatus(t){ status.textContent = t; }
+
+// Hiển thị/ẩn thanh trượt cường độ sharpen tùy theo checkbox
+enableSharpen.addEventListener('change', ()=>{
+  const enabled = enableSharpen.checked;
+  sharpenSettings.style.display = enabled ? 'flex' : 'none';
+  sharpenIntensity.disabled = !enabled;
+  if(!enabled){
+    sharpenIntensity.value = '0';
+    sharpenValue.textContent = '0';
+  }
+});
+
+sharpenIntensity.addEventListener('input', ()=>{
+  sharpenValue.textContent = sharpenIntensity.value;
+});
+
+fileInput.addEventListener('change', e=>{
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  const url = URL.createObjectURL(f);
+  loadPreview(url).then(img=>{
+    currentImage = img;
+    setStatus('Ảnh sẵn sàng để crop');
+    hideSelection();
+  }).catch(err=>{ setStatus('Lỗi đọc ảnh'); console.error(err); });
+});
+
+function loadPreview(src){
+  return new Promise((resolve,reject)=>{
+    previewImg.src = src;
+    previewImg.onload = ()=>{
+      const tmp = new Image();
+      tmp.src = src;
+      tmp.onload = ()=> resolve(tmp);
+      tmp.onerror = reject;
+    };
+    previewImg.onerror = reject;
+  });
+}
+
+overlay.addEventListener('mousedown', e=>{
+  if(!previewImg.src) return;
+  drag.active = true;
+  const r = overlay.getBoundingClientRect();
+  drag.startX = e.clientX - r.left;
+  drag.startY = e.clientY - r.top;
+  selection.style.display = 'block';
+  selection.style.left = drag.startX + 'px';
+  selection.style.top = drag.startY + 'px';
+  selection.style.width = '0px';
+  selection.style.height = '0px';
+});
+window.addEventListener('mousemove', e=>{
+  if(!drag.active) return;
+  const r = overlay.getBoundingClientRect();
+  let mx = e.clientX - r.left;
+  let my = e.clientY - r.top;
+  mx = Math.max(0, Math.min(r.width, mx));
+  my = Math.max(0, Math.min(r.height, my));
+  const x1 = Math.min(drag.startX, mx);
+  const y1 = Math.min(drag.startY, my);
+  const x2 = Math.max(drag.startX, mx);
+  const y2 = Math.max(drag.startY, my);
+  selection.style.left = x1 + 'px';
+  selection.style.top = y1 + 'px';
+  selection.style.width = (x2 - x1) + 'px';
+  selection.style.height = (y2 - y1) + 'px';
+});
+window.addEventListener('mouseup', e=>{
+  if(!drag.active) return;
+  drag.active = false;
+  const r = overlay.getBoundingClientRect();
+  const s = selection.getBoundingClientRect();
+  cropRect = {
+    x: s.left - r.left,
+    y: s.top - r.top,
+    w: s.width,
+    h: s.height
+  };
+  if(cropRect.w < 6 || cropRect.h < 6){
+    hideSelection();
+    setStatus('Vùng chọn quá nhỏ');
+    cropRect = null;
+  } else {
+    setStatus('Đã chọn vùng crop');
+  }
+});
+function hideSelection(){
+  selection.style.display = 'none';
+  cropRect = null;
+}
+
+/**
+ * Áp dụng filter sharpen theo kernel đơn giản sau khi drawImage
+ * vì canvas máy khách không có built-in sharpen
+ */
+function applySharpen(ctx, w, h, intensity){
+  // intensity: 0-100. 0 là vô hiệu, 100 là max sharpen.
+  intensity = Math.max(0, Math.min(100, Number(intensity) || 0));
+  if(intensity === 0){
+    return;
+  }
+
+  // Tính hệ số từ 0-1
+  const alpha = intensity / 100;
+  // kernel gốc sharpen cơ bản cấu hình từ Luma tăng cạnh
+  // chuẩn: center = 5, xung quanh = -1
+  // biến thể theo alpha để tăng/bớt cường độ
+  const centre = 1 + 4 * alpha; // 1..5
+  const negative = -alpha; // 0..-1
+  const kernel = [
+    0, negative, 0,
+    negative, centre, negative,
+    0, negative, 0
+  ];
+
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const src = imgData.data;
+  const dst = new Uint8ClampedArray(src.length);
+  const kw = 3;
+  const kh = 3;
+  const half = 1;
+
+  for(let y = 0; y < h; y++){
+    for(let x = 0; x < w; x++){
+      const idx = (y * w + x) * 4;
+      for(let c = 0; c < 3; c++){
+        let value = 0;
+        for(let ky = 0; ky < kh; ky++){
+          for(let kx = 0; kx < kw; kx++){
+            const ix = Math.min(w - 1, Math.max(0, x + kx - half));
+            const iy = Math.min(h - 1, Math.max(0, y + ky - half));
+            const iidx = (iy * w + ix) * 4 + c;
+            const kval = kernel[ky * kw + kx];
+            value += src[iidx] * kval;
+          }
+        }
+        dst[idx + c] = Math.min(255, Math.max(0, value));
+      }
+      dst[idx + 3] = src[idx + 3];
+    }
+  }
+
+  imgData.data.set(dst);
+  ctx.putImageData(imgData, 0, 0);
+}
+
+/**
+ * Crop image theo sx, sy, sw, sh, scaleFactor, chất lượng và chọn lọc sharpen
+ */
+function cropImageToDataUrl(image, sx, sy, sw, sh, options={}){
+  const scaleFactor = Number(options.scaleFactor) || 2; // retina rendering scale 2x
+  const maxOutputDim = Number(options.maxOutputDim) || 2200;
+  const applySharpenFilter = !!options.applySharpen;
+  const sharpenIntensityValue = Number(options.sharpenIntensity) || 0;
+  const outputType = options.outputType || 'image/jpeg';
+  const quality = Number(options.quality) || 0.92;
+
+  let outW = Math.round(sw * scaleFactor);
+  let outH = Math.round(sh * scaleFactor);
+
+  // Giữ kích thước tối đa để không tăng quá nhiều dung lượng
+  if(outW > maxOutputDim || outH > maxOutputDim){
+    const r = Math.min(maxOutputDim / outW, maxOutputDim / outH);
+    outW = Math.max(1, Math.round(outW * r));
+    outH = Math.max(1, Math.round(outH * r));
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  // Vẽ vùng crop từ ảnh gốc lên canvas tạm với độ phân giải cao
+  ctx.drawImage(image, sx, sy, sw, sh, 0, 0, outW, outH);
+
+  // Áp dụng sharpen nếu bật checkbox và intensity > 0
+  if(applySharpenFilter && sharpenIntensityValue > 0){
+    applySharpen(ctx, outW, outH, sharpenIntensityValue);
+  }
+
+  // Xuất sang JPEG để giảm dung lượng (PNG có thể nặng hơn)
+  return {
+    dataUrl: canvas.toDataURL(outputType, quality),
+    width: outW,
+    height: outH
+  };
+}
+
+cropBtn.addEventListener('click', ()=>{
+  if(!previewImg.src || !currentImage){ setStatus('Chưa có ảnh để crop'); return; }
+  if(!cropRect){ setStatus('Chưa chọn vùng crop'); return; }
+
+  const imgEl = previewImg;
+  const areaRect = overlay.getBoundingClientRect();
+  const dispW = imgEl.clientWidth;
+  const dispH = imgEl.clientHeight;
+  const imgRect = imgEl.getBoundingClientRect();
+  const offsetX = imgRect.left - areaRect.left;
+  const offsetY = imgRect.top - areaRect.top;
+
+  const selX = Math.max(0, cropRect.x - offsetX);
+  const selY = Math.max(0, cropRect.y - offsetY);
+  const selW = Math.max(0, Math.min(cropRect.w, dispW - (selX)));
+  const selH = Math.max(0, Math.min(cropRect.h, dispH - (selY)));
+  if(selW <= 0 || selH <= 0){ setStatus('Vùng chọn nằm ngoài ảnh'); return; }
+
+  const sx = (selX / dispW) * currentImage.naturalWidth;
+  const sy = (selY / dispH) * currentImage.naturalHeight;
+  const sw = (selW / dispW) * currentImage.naturalWidth;
+  const sh = (selH / dispH) * currentImage.naturalHeight;
+
+  // Lấy tùy chọn scale và sharpen từ input
+  const scaleFactor = Math.max(1, Math.min(3, parseInt(scaleFactorInput.value, 10) || 2));
+  const applySharpen = enableSharpen.checked;
+  const intensity = Number(sharpenIntensity.value) || 0;
+
+  const cropResult = cropImageToDataUrl(currentImage, sx, sy, sw, sh, {
+    scaleFactor,
+    maxOutputDim: 2200,
+    applySharpen,
+    sharpenIntensity: intensity,
+    applySharpen,
+    outputType: 'image/jpeg',
+    quality: 0.92
+  });
+
+  const dataUrl = cropResult.dataUrl;
+  const outputW = cropResult.width;
+  const outputH = cropResult.height;
+
+  const row = {
+    id: ++rowIdCounter,
+    dataUrl,
+    model: '',
+    specs: '',
+    sheetStatus: 'pending', // pending | sending | ok | err
+    sheetError: '',
+    w: outputW,
+    h: outputH
+  };
+  rows.unshift(row);
+  renderTable();
+  setStatus('Đã thêm hàng: ' + row.id);
+  hideSelection();
+});
+
+function renderTable(){
+  tbody.innerHTML = '';
+  for(const r of rows){
+    const tr = document.createElement('tr');
+    tr.dataset.id = r.id;
+
+    const tdImg = document.createElement('td');
+    const img = document.createElement('img');
+    img.src = r.dataUrl;
+    img.alt = 'thumb';
+    img.className = 'thumb-img';
+    tdImg.appendChild(img);
+
+    const tdModel = document.createElement('td');
+    const taModel = document.createElement('textarea');
+    taModel.value = r.model;
+    taModel.addEventListener('input', (e) => {
+      r.model = e.target.value;
+      autoResizeTextarea(e.target);
+    });
+    setTimeout(()=>autoResizeTextarea(taModel),0);
+    tdModel.appendChild(taModel);
+
+    const tdSpecs = document.createElement('td');
+    const taSpecs = document.createElement('textarea');
+    taSpecs.value = r.specs;
+    taSpecs.addEventListener('input', (e) => {
+      r.specs = e.target.value;
+      autoResizeTextarea(e.target);
+    });
+    setTimeout(()=>autoResizeTextarea(taSpecs),0);
+    tdSpecs.appendChild(taSpecs);
+
+    const tdAct = document.createElement('td');
+    tdAct.style.whiteSpace = 'nowrap';
+    const actions = document.createElement('div');
+    actions.className = 'cell-actions';
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'download-btn';
+    dlBtn.textContent = 'Tải';
+    dlBtn.type = 'button';
+    dlBtn.addEventListener('click', () => downloadDataUrl(r.dataUrl, `crop-${r.id}.jpg`));
+    const xBtn = document.createElement('button');
+    xBtn.className = 'xbtn';
+    xBtn.textContent = '✕';
+    xBtn.title = 'Xóa dòng';
+    xBtn.type = 'button';
+    xBtn.addEventListener('click', () => {
+      removeRow(r.id);
+    });
+    actions.appendChild(dlBtn);
+    actions.appendChild(xBtn);
+
+    // Trạng thái gửi lên Google Sheets (không ảnh hưởng logic crop/xóa/tải)
+    const sendStatus = document.createElement('span');
+    sendStatus.className = 'send-status';
+    if(r.sheetStatus === 'sending') sendStatus.classList.add('sending');
+    else if(r.sheetStatus === 'ok') sendStatus.classList.add('ok');
+    else if(r.sheetStatus === 'err') sendStatus.classList.add('err');
+    sendStatus.textContent =
+      r.sheetStatus === 'pending' ? '' :
+      r.sheetStatus === 'sending' ? 'Đang gửi...' :
+      r.sheetStatus === 'ok' ? 'Gửi xong' :
+      'Lỗi';
+    actions.appendChild(sendStatus);
+    tdAct.appendChild(actions);
+
+    tr.appendChild(tdImg);
+    tr.appendChild(tdModel);
+    tr.appendChild(tdSpecs);
+    tr.appendChild(tdAct);
+
+    tbody.appendChild(tr);
+  }
+}
+
+function removeRow(id){
+  const idx = rows.findIndex(x=>x.id===id);
+  if(idx !== -1) rows.splice(idx,1);
+  renderTable();
+  setStatus('Đã xóa hàng ' + id);
+}
+
+function downloadDataUrl(dataUrl, filename){
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+clearAll.addEventListener('click', ()=>{
+  if(!confirm('Xóa tất cả hàng?')) return;
+  rows = [];
+  rowIdCounter = 0;
+  renderTable();
+  setStatus('Đã xóa tất cả');
+});
+
+function autoResizeTextarea(ta){
+  if(!ta) return;
+  ta.style.height = 'auto';
+  const pad = 6;
+  ta.style.height = (ta.scrollHeight + pad) + 'px';
+}
+
+(function enableDrop(){
+  const area = document.getElementById('cropArea');
+  area.addEventListener('dragover', e=>{ e.preventDefault(); area.style.outline = '2px dashed rgba(43,110,246,0.35)'; });
+  area.addEventListener('dragleave', e=>{ area.style.outline = 'none'; });
+  area.addEventListener('drop', e=>{
+    e.preventDefault(); area.style.outline = 'none';
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f && f.type.startsWith('image/')){
+      const url = URL.createObjectURL(f);
+      loadPreview(url).then(img=>{
+        currentImage = img;
+        setStatus('Ảnh sẵn sàng để crop');
+        hideSelection();
+      });
+    }
+  });
+})();
+
+// Hàm xuất Excel với ảnh và cải tiến giao diện đẹp mắt
+async function exportToExcelWithImages() {
+  if (rows.length === 0) {
+    alert("Chưa có dữ liệu để xuất");
+    return;
+  }
+
+  console.log("Bắt đầu xuất Excel...");
+
+  const imgWidth = parseInt(imgWidthInput.value, 10);
+  const imgHeight = parseInt(imgHeightInput.value, 10);
+  if (isNaN(imgWidth) || imgWidth <= 0 || isNaN(imgHeight) || imgHeight <= 0) {
+    alert("Vui lòng nhập kích thước ảnh hợp lệ (Width và Height lớn hơn 0)");
+    return;
+  }
+
+  const ROW_PADDING = 20; // padding trên dưới (px)
+  const rowHeightPx = imgHeight + ROW_PADDING * 2;
+  const rowHeightPt = rowHeightPx * 0.75; // 1pt = 1.333px, Excel dùng point
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Products");
+
+  // Cấu hình cột với độ rộng phù hợp
+  // Cột A (ảnh) width tự động theo imgWidth (ước tính 7px/char) + 4 char padding
+  const colAWidthChar = imgWidth / 7 + 4;
+  worksheet.columns = [
+    { header: "Hình ảnh", key: "image", width: colAWidthChar },
+    { header: "Model", key: "model", width: 20 },
+    { header: "Thông số", key: "specs", width: 40 }
+  ];
+
+  // Định dạng header: nền xanh đậm #1e3a5f, chữ trắng, bold, căn giữa
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  headerRow.alignment = { horizontal: "center" };
+  headerRow.height = 20;
+  headerRow.eachCell(cell => {
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1e3a5f' }
+    };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF000000' } },
+      left: { style: 'thin', color: { argb: 'FF000000' } },
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      right: { style: 'thin', color: { argb: 'FF000000' } }
+    };
+  });
+
+  // Hàm tính toán offset căn giữa ảnh trong ô
+  // colWidthPx = colWidthChar * 7 (ước tính 7px/char)
+  const colWidthPx = colAWidthChar * 7;
+  const offsetX = (colWidthPx - imgWidth) / 2;
+  const offsetY = ROW_PADDING;
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const rowIndex = i + 2;
+
+    console.log(`Đang xử lý hàng ${rowIndex}/${rows.length + 1}`);
+
+    // Thêm dòng dữ liệu (Model, Thông số)
+    const row = worksheet.addRow({
+      model: r.model,
+      specs: r.specs
+    });
+
+    // Đặt chiều cao dòng theo ảnh + padding
+    row.height = rowHeightPt;
+
+    // Căn giữa text dọc ngang và wrap text cho tất cả ô dữ liệu
+    ['B', 'C'].forEach(colKey => {
+      const cell = worksheet.getCell(`${colKey}${rowIndex}`);
+      cell.alignment = { vertical: 'middle', wrapText: true };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+    });
+
+    // Thêm ảnh vào worksheet
+    const base64 = r.dataUrl.replace(/^data:image\/png;base64,/, "");
+    const imageId = workbook.addImage({
+      base64: base64,
+      extension: "png"
+    });
+
+    // Tính toán vị trí ảnh căn giữa ô
+    worksheet.addImage(imageId, {
+      tl: {
+        col: 0 + offsetX / colWidthPx,
+        row: (rowIndex - 1) + offsetY / rowHeightPx
+      },
+      ext: { width: imgWidth, height: imgHeight }
+    });
+
+    // Đặt border cho ô ảnh (cột A)
+    const cellImg = worksheet.getCell(`A${rowIndex}`);
+    cellImg.border = {
+      top: { style: 'thin', color: { argb: 'FF000000' } },
+      left: { style: 'thin', color: { argb: 'FF000000' } },
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      right: { style: 'thin', color: { argb: 'FF000000' } }
+    };
+    // Căn giữa ô ảnh (text nếu có)
+    cellImg.alignment = { horizontal: 'center' };
+  }
+
+  // Đặt border cho header cột Model và Thông số (đã làm trong vòng lặp)
+  // Đặt border cho header cột ảnh
+  worksheet.getCell('A1').border = {
+    top: { style: 'thin', color: { argb: 'FF000000' } },
+    left: { style: 'thin', color: { argb: 'FF000000' } },
+    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FF000000' } }
+  };
+
+  // Xuất file Excel
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "danh_sach_san_pham.xlsx";
+  link.click();
+
+  console.log("Xuất Excel hoàn tất");
+}
+
+exportExcelBtn.addEventListener("click", exportToExcelWithImages);
+
+// ------------------- Google Sheets (Apps Script Web App) -------------------
+// Lấy cấu hình từ localStorage hoặc input
+function getSheetWebAppUrl(){
+  return webAppUrlInput.value.trim() || localStorage.getItem('sheetWebAppUrl') || '';
+}
+
+function getGoogleSheetId(){
+  return sheetIdInput.value.trim() || localStorage.getItem('googleSheetId') || '';
+}
+
+// Load cấu hình từ localStorage khi load page
+function loadConfigFromStorage(){
+  const savedUrl = localStorage.getItem('sheetWebAppUrl') || '';
+  const savedId = localStorage.getItem('googleSheetId') || '';
+  webAppUrlInput.value = savedUrl;
+  sheetIdInput.value = savedId;
+}
+loadConfigFromStorage();
+
+// Lưu cấu hình vào localStorage
+saveLinkBtn.addEventListener('click', ()=>{
+  const url = webAppUrlInput.value.trim();
+  const id = sheetIdInput.value.trim();
+  
+  if(!url){
+    alert('Vui lòng nhập Web App URL');
+    return;
+  }
+  if(!id){
+    alert('Vui lòng nhập Google Sheet ID');
+    return;
+  }
+  
+  localStorage.setItem('sheetWebAppUrl', url);
+  localStorage.setItem('googleSheetId', id);
+  setStatus('✓ Đã lưu cấu hình Google Sheets');
+  configureSheetWebApp();
+  setTimeout(()=>setStatus('Chọn ảnh để bắt đầu'), 2000);
+});
+
+function configureSheetWebApp(){
+  const url = getSheetWebAppUrl();
+  const id = getGoogleSheetId();
+  const isConfigured = url && id && !url.includes('PASTE_') && !id.includes('YOUR_');
+  
+  if(!isConfigured){
+    sendToSheetsBtn.disabled = true;
+    sendToSheetsBtn.style.opacity = '0.5';
+    sendToSheetsBtn.style.cursor = 'not-allowed';
+    sendToSheetsBtn.title = '⚠️ Chưa cấu hình URL Web App hoặc Sheet ID';
+  } else {
+    sendToSheetsBtn.disabled = false;
+    sendToSheetsBtn.style.opacity = '1';
+    sendToSheetsBtn.style.cursor = 'pointer';
+    sendToSheetsBtn.title = 'Gửi tất cả dữ liệu lên Google Sheets';
+  }
+}
+configureSheetWebApp();
+
+function extractMimeAndBase64(dataUrl){
+  // dataUrl dạng: data:image/jpeg;base64,....
+  const m = String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
+  if(!m) throw new Error('dataUrl không đúng định dạng base64');
+  return { mimeType: m[1], base64: m[2] };
+}
+
+async function postJson(url, body){
+  /**
+   * LỖI GÂY “không ghi được Sheet / khó debug” (trong code cũ):
+   * - Dùng `mode: "no-cors"` => browser sẽ ép request thành dạng "no-cors":
+   *   + header `Content-Type` bị ép về `text/plain;charset=UTF-8`
+   *   + response bị "opaque" => KHÔNG đọc được `res.text()`/`res.json()` để biết server trả gì
+   *
+   * CÁCH SỬA:
+   * - Dùng `mode: "cors"` (mặc định) để gửi JSON chuẩn và đọc response JSON.
+   * - Bắt buộc header `Content-Type: application/json`
+   * - body phải JSON.stringify(...)
+   *
+   * Ghi chú:
+   * - Apps Script Web App thường trả 302 redirect; `redirect: "follow"` sẽ tự theo redirect.
+   */
+  if(!url) throw new Error('Web App URL đang rỗng (chưa cấu hình)');
+
+  const res = await fetch(url, {
+    method: 'POST',
+    mode: 'cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    // Google Apps Script Web App thường redirect/follow OK, để rõ ràng cho production
+    redirect: 'follow'
+  });
+  // Đọc text trước để fallback khi server trả HTML/khác JSON
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = { ok: false, error: text }; }
+  if(!res.ok || !data.ok){
+    const msg = data && data.error ? data.error : `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+// Gửi 1 dòng lên Sheet (theo đúng yêu cầu: có hàm sendToSheet(row))
+async function sendToSheet(row){
+  const url = getSheetWebAppUrl();
+  const { mimeType, base64 } = extractMimeAndBase64(row.dataUrl);
+  const rowHeightPx = Math.max(10, parseInt(imgHeightInput.value, 10) || 70);
+
+  return postJson(url, {
+    rows: [{
+      id: row.id,
+      model: row.model,
+      specs: row.specs,
+      mimeType,
+      imageBase64: base64,
+      w: row.w,
+      h: row.h
+    }],
+    rowHeightPx
+  });
+}
+
+// Gửi nhiều dòng (bulk) - 1 request cho một batch
+async function sendRowsBulk(rowsBatch){
+  const url = getSheetWebAppUrl();
+  const rowHeightPx = Math.max(10, parseInt(imgHeightInput.value, 10) || 70);
+  const payloadRows = rowsBatch.map(row => {
+    const { mimeType, base64 } = extractMimeAndBase64(row.dataUrl);
+    return {
+      id: row.id,
+      model: row.model,
+      specs: row.specs,
+      mimeType,
+      imageBase64: base64,
+      w: row.w,
+      h: row.h
+    };
+  });
+
+  return postJson(url, { rows: payloadRows, rowHeightPx });
+}
+
+function setRowsSheetStatusByIds(ids, sheetStatus, sheetError){
+  const idSet = new Set(ids);
+  for(const r of rows){
+    if(!idSet.has(r.id)) continue;
+    r.sheetStatus = sheetStatus;
+    r.sheetError = sheetError || '';
+  }
+}
+
+/**
+ * Gửi tất cả các hàng trong bảng lên Google Sheets.
+ * Nếu có lỗi sẽ mark tất cả hàng chưa ok là lỗi.
+ * Trạng thái của các hàng sẽ được cập nhật qua hàm renderTable.
+ * @returns {Promise<void>}
+ */
+async function sendAllRowsToSheetsBulk(){
+  if(isSendingToSheets) return;
+  if(rows.length === 0){
+    setStatus('Không có dữ liệu để gửi');
+    return;
+  }
+
+  const url = getSheetWebAppUrl();
+  const id = getGoogleSheetId();
+  if(!url || !id){
+    setStatus('⚠️ Chưa cấu hình Web App URL hoặc Google Sheet ID');
+    return;
+  }
+
+  isSendingToSheets = true;
+  sendToSheetsBtn.disabled = true;
+  exportExcelBtn.disabled = true;
+
+  const total = rows.length;
+  let sentCount = 0;
+  setStatus(`Đang gửi ${total} hàng lên Google Sheets...`);
+
+  // Base64 khá nặng, nên gửi theo batch nhỏ để hạn chế lỗi quota/timeout
+  const BATCH_SIZE = 4;
+
+  try {
+    for(let i = 0; i < rows.length; i += BATCH_SIZE){
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      const batchIds = batch.map(x => x.id);
+
+      // cập nhật UI trạng thái
+      setRowsSheetStatusByIds(batchIds, 'sending', '');
+      renderTable();
+      await new Promise(r => setTimeout(r, 50));
+
+      await sendRowsBulk(batch);
+
+      // nếu thành công: đánh dấu ok
+      setRowsSheetStatusByIds(batchIds, 'ok', '');
+      sentCount += batch.length;
+      setStatus(`Đã gửi ${sentCount}/${total} hàng thành công`);
+      renderTable();
+    }
+
+    setStatus(`Gửi hoàn tất: ${sentCount}/${total} hàng`);
+  } catch(err){
+    // Nếu request thất bại: mark tất cả hàng chưa ok là lỗi
+    const errMsg = (err && err.message) ? err.message : String(err);
+    setStatus(`Lỗi gửi lên Google Sheets: ${errMsg}`);
+    const idsToMark = rows.filter(r => r.sheetStatus !== 'ok').map(r => r.id);
+    setRowsSheetStatusByIds(idsToMark, 'err', errMsg);
+    renderTable();
+    console.error(err);
+  } finally {
+    isSendingToSheets = false;
+    exportExcelBtn.disabled = false;
+    configureSheetWebApp();
+  }
+}
+
+sendToSheetsBtn.addEventListener('click', sendAllRowsToSheetsBulk);
+
+setStatus('Chọn ảnh để bắt đầu');
+</script>
+
+<!-- 
+========================================
+HƯỚNG DẪN: Cấu hình Google Sheets (OLM GỌN NHẤT)
+========================================
+
+CÁCH 1: Dùng input trong tool (KHUYÊN DÙNG)
+1. Mở https://script.google.com
+2. Tạo project mới
+3. Copy code dưới đây vào Apps Script:
+
+------ BẮT ĐẦU CODE APPS SCRIPT ------
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const rows = data.rows || [];
+    const rowHeightPx = data.rowHeightPx || 70;
+    
+    // Thay ID này bằng ID Google Sheet của bạn
+    const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID_HERE';
+    const spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = spreadsheet.getActiveSheet();
+    
+    let lastRow = sheet.getLastRow();
+    let rowInsertIndex = lastRow + 1;
+    
+    for(const row of rows){
+      // Thêm dữ liệu
+      sheet.getRange(rowInsertIndex, 1).setValue(''); // Col A (sẽ điều chỉnh cao)
+      sheet.getRange(rowInsertIndex, 2).setValue(row.model || '');
+      sheet.getRange(rowInsertIndex, 3).setValue(row.specs || '');
+      
+      // Đặt chiều cao dòng
+      sheet.setRowHeight(rowInsertIndex, rowHeightPx);
+      
+      // Thêm ảnh từ base64
+      if(row.imageBase64){
+        const imageBlob = Utilities.newBlob(
+          Utilities.base64Decode(row.imageBase64),
+          row.mimeType,
+          'image'
+        );
+        const img = sheet.insertImage(imageBlob, 1, rowInsertIndex);
+        if(img && row.w && row.h){
+          img.setWidth(row.w).setHeight(row.h);
+        }
+      }
+      
+      rowInsertIndex++;
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      message: `Thêm ${rows.length} hàng thành công`
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch(err){
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: false,
+      error: err.message
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+------ KẾT THÚC CODE APPS SCRIPT ------
+
+4. Nhấn "Deploy" > "New Deployment" > Type: "Web App"
+   - Execute as: Your Account
+   - Who has access: Anyone
+5. Copy URL Web App từ dialog
+6. Quay lại tool crop:
+   - Nhập URL Web App vào ô "Web App URL"
+   - Nhập Google Sheet ID vào ô "Google Sheet ID"
+   - Nhấn "Lưu"
+7. Nhấn nút "Gửi lên Google Sheets" để test
+
+CHÚ Ý: Nhớ thay 'YOUR_GOOGLE_SHEET_ID_HERE' bằng ID Google Sheet của bạn
+(Copy từ URL: docs.google.com/spreadsheets/d/[ID_NẰY]/edit)
+-->
+
+</body>
+</html>
