@@ -842,10 +842,15 @@ exportExcelBtn.addEventListener("click", exportToExcelWithImages);
 // ------------------- Google Sheets (Apps Script Web App) -------------------
 // Lấy cấu hình từ localStorage hoặc input
 function getSheetWebAppUrl(){
-  return webAppUrlInput.value.trim() || localStorage.getItem('sheetWebAppUrl') || '';
+  // IMPORTANT:
+  // Không gọi thẳng Apps Script Web App từ browser vì sẽ bị CORS (preflight OPTIONS).
+  // Ta gọi endpoint proxy cùng domain (Vercel Function) để tránh CORS và vẫn đọc được response.
+  return '/api/sheets-proxy';
 }
 
 function getGoogleSheetId(){
+  // Sheet ID không còn cần ở FE nếu GAS_WEBAPP_URL đã trỏ đúng spreadsheet/server-side.
+  // Giữ lại hàm để không phá UI cũ, nhưng có thể bỏ trống.
   return sheetIdInput.value.trim() || localStorage.getItem('googleSheetId') || '';
 }
 
@@ -863,12 +868,13 @@ saveLinkBtn.addEventListener('click', ()=>{
   const url = webAppUrlInput.value.trim();
   const id = sheetIdInput.value.trim();
   
-  if(!url){
-    alert('Vui lòng nhập Web App URL');
-    return;
-  }
-  if(!id){
-    alert('Vui lòng nhập Google Sheet ID');
+  // Sau khi dùng Vercel proxy (/api/sheets-proxy), FE không cần gọi trực tiếp Web App URL nữa,
+  // và cũng không cần Sheet ID ở phía trình duyệt.
+  // Giữ UI này để không phá giao diện cũ; bạn có thể bỏ qua không nhập.
+  if(!url || !id){
+    setStatus('ℹ️ Đang dùng proxy trên Vercel: không cần nhập URL/Sheet ID ở đây');
+    configureSheetWebApp();
+    setTimeout(()=>setStatus('Chọn ảnh để bắt đầu'), 2000);
     return;
   }
   
@@ -881,14 +887,15 @@ saveLinkBtn.addEventListener('click', ()=>{
 
 function configureSheetWebApp(){
   const url = getSheetWebAppUrl();
-  const id = getGoogleSheetId();
-  const isConfigured = url && id && !url.includes('PASTE_') && !id.includes('YOUR_');
+  // Với proxy, chỉ cần có endpoint nội bộ là đủ.
+  // GAS_WEBAPP_URL sẽ được cấu hình ở server (Vercel Environment Variables).
+  const isConfigured = !!url;
   
   if(!isConfigured){
     sendToSheetsBtn.disabled = true;
     sendToSheetsBtn.style.opacity = '0.5';
     sendToSheetsBtn.style.cursor = 'not-allowed';
-    sendToSheetsBtn.title = '⚠️ Chưa cấu hình URL Web App hoặc Sheet ID';
+    sendToSheetsBtn.title = '⚠️ Chưa cấu hình endpoint proxy';
   } else {
     sendToSheetsBtn.disabled = false;
     sendToSheetsBtn.style.opacity = '1';
@@ -1004,9 +1011,8 @@ async function sendAllRowsToSheetsBulk(){
   }
 
   const url = getSheetWebAppUrl();
-  const id = getGoogleSheetId();
-  if(!url || !id){
-    setStatus('⚠️ Chưa cấu hình Web App URL hoặc Google Sheet ID');
+  if(!url){
+    setStatus('⚠️ Chưa cấu hình endpoint proxy');
     return;
   }
 
