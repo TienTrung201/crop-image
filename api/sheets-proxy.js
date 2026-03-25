@@ -67,12 +67,18 @@ module.exports = async function handler(req, res) {
       data = { ok: false, error: String(text).slice(0, 800) };
     }
 
-    if (!gasRes.ok || !data.ok) {
-      const msg = data && data.error ? data.error : `GAS HTTP ${gasRes.status}`;
+    // GAS trả 200 nhưng body không đúng format { ok: true, ... } cũng coi là lỗi logic
+    if (!gasRes.ok || !data || data.ok !== true) {
+      const msg =
+        data && data.error ? data.error :
+        (!gasRes.ok ? `GAS HTTP ${gasRes.status}` : 'GAS trả 200 nhưng thiếu `ok:true`');
+
       return res.status(502).json({
         ok: false,
         error: msg,
-        gasStatus: gasRes.status
+        gasStatus: gasRes.status,
+        // Trả thêm để debug: GAS đang trả gì thật sự?
+        gasBody: data
       });
     }
 
