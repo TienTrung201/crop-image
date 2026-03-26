@@ -247,9 +247,9 @@
       <section class="panel" aria-labelledby="qualitySettingsTitle" style="margin-top:0">
         <h2 id="qualitySettingsTitle">Cài đặt chất lượng ảnh</h2>
         <label class="input-label" style="display:flex;align-items:center;gap:6px">
-          <input id="enableSharpen" type="checkbox" /> Tăng độ nét (Sharpen)
+          <input id="enableSharpen" checked="true" type="checkbox" /> Tăng độ nét (Sharpen)
         </label>
-        <div id="sharpenSettings" style="display:none; gap:6px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+        <div id="sharpenSettings" style="gap:6px; align-items:center; margin-top:8px; flex-wrap:wrap;">
           <label class="input-label" for="sharpenIntensity" style="margin:0">Cường độ</label>
           <input id="sharpenIntensity" type="range" min="0" max="100" value="100" disabled style="width:180px" />
           <span id="sharpenValue" style="min-width:35px;display:inline-block">100</span>
@@ -328,6 +328,14 @@ let cropRect = null;
 let rowIdCounter = 0;
 let rows = [];
 let isSendingToSheets = false;
+// ================= DEFAULT SHARPEN STATE =================
+
+// Mặc định bật sharpen 100%
+enableSharpen.checked = true;
+sharpenIntensity.value = 100;
+sharpenValue.textContent = '100';
+sharpenSettings.style.display = 'flex';
+sharpenIntensity.disabled = false;
 // ================= AUTO SAVE WITH DEBOUNCE =================
 
 let saveTimeout = null;
