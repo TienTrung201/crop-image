@@ -328,9 +328,61 @@ let cropRect = null;
 let rowIdCounter = 0;
 let rows = [];
 let isSendingToSheets = false;
+// ================= AUTO SAVE WITH DEBOUNCE =================
 
+let saveTimeout = null;
+
+/**
+ * Tự động lưu cache nhưng debounce 300ms
+ * Tránh ghi localStorage liên tục khi gõ phím
+ */
+function scheduleSaveCache(){
+  if(saveTimeout){
+    clearTimeout(saveTimeout);
+  }
+  saveTimeout = setTimeout(() => {
+    saveRowsToCache();
+  }, 300);
+}
+// ================= CACHE CONFIG =================
+const CACHE_KEY = "tool_crop_cached_rows_v1";
 function setStatus(t){ status.textContent = t; }
+// ================= CACHE FUNCTIONS =================
 
+/**
+ * Lưu toàn bộ danh sách rows vào localStorage
+ * Không thay đổi logic hiện có
+ */
+function saveRowsToCache(){
+  try{
+    localStorage.setItem(CACHE_KEY, JSON.stringify(rows));
+  }catch(err){
+    console.error("Lỗi lưu cache:", err);
+  }
+}
+
+/**
+ * Load danh sách từ localStorage khi reload trang
+ */
+function loadRowsFromCache(){
+  try{
+    const raw = localStorage.getItem(CACHE_KEY);
+    if(!raw) return;
+
+    const parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)) return;
+
+    rows = parsed;
+
+    // tránh trùng ID khi thêm mới
+    rowIdCounter = rows.reduce((max, r) => Math.max(max, r.id || 0), 0);
+
+    renderTable();
+    setStatus("Đã khôi phục " + rows.length + " sản phẩm từ cache");
+  }catch(err){
+    console.error("Lỗi load cache:", err);
+  }
+}
 // Hiển thị/ẩn thanh trượt cường độ sharpen tùy theo checkbox
 enableSharpen.addEventListener('change', ()=>{
   const enabled = enableSharpen.checked;
@@ -573,8 +625,9 @@ cropBtn.addEventListener('click', ()=>{
     w: outputW,
     h: outputH
   };
-  rows.push(row); // ← thêm vào cuối
-  renderTable();
+  rows.push(row);
+saveRowsToCache();   // ✅ lưu cache ngay sau khi push
+renderTable();
   setStatus('Đã thêm hàng: ' + row.id);
   hideSelection();
 });
@@ -598,6 +651,7 @@ function renderTable(){
     taModel.addEventListener('input', (e) => {
       r.model = e.target.value;
       autoResizeTextarea(e.target);
+        scheduleSaveCache(); // ✅ lưu cache khi nhập
     });
     setTimeout(()=>autoResizeTextarea(taModel),0);
     tdModel.appendChild(taModel);
@@ -608,6 +662,7 @@ function renderTable(){
     taSpecs.addEventListener('input', (e) => {
       r.specs = e.target.value;
       autoResizeTextarea(e.target);
+  scheduleSaveCache(); // ✅ lưu cache khi nhập
     });
     setTimeout(()=>autoResizeTextarea(taSpecs),0);
     tdSpecs.appendChild(taSpecs);
@@ -656,8 +711,11 @@ function renderTable(){
 }
 
 function removeRow(id){
-  const idx = rows.findIndex(x=>x.id===id);
-  if(idx !== -1) rows.splice(idx,1);
+  const idx = rows.findIndex(x => x.id === id);
+  if(idx !== -1){
+    rows.splice(idx,1);
+    saveRowsToCache();   // ✅ cập nhật cache sau khi xóa
+  }
   renderTable();
   setStatus('Đã xóa hàng ' + id);
 }
@@ -733,7 +791,9 @@ clearAll.addEventListener('click', ()=>{
   if(!confirm('Xóa tất cả hàng?')) return;
   rows = [];
   rowIdCounter = 0;
+  localStorage.removeItem(CACHE_KEY);   // ✅ clear cache
   renderTable();
+
   setStatus('Đã xóa tất cả');
 });
 
@@ -1124,7 +1184,8 @@ async function sendAllRowsToSheetsBulk(){
 }
 
 sendToSheetsBtn.addEventListener('click', sendAllRowsToSheetsBulk);
-
+// ================= LOAD CACHE WHEN PAGE LOAD =================
+loadRowsFromCache();
 setStatus('Chọn ảnh để bắt đầu');
 </script>
 
