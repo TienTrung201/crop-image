@@ -251,7 +251,7 @@
         </label>
         <div id="sharpenSettings" style="display:none; gap:6px; align-items:center; margin-top:8px; flex-wrap:wrap;">
           <label class="input-label" for="sharpenIntensity" style="margin:0">Cường độ</label>
-          <input id="sharpenIntensity" type="range" min="0" max="100" value="30" disabled style="width:180px" />
+          <input id="sharpenIntensity" type="range" min="0" max="100" value="100" disabled style="width:180px" />
           <span id="sharpenValue" style="min-width:35px;display:inline-block">30</span>
         </div>
       </section>
@@ -573,7 +573,7 @@ cropBtn.addEventListener('click', ()=>{
     w: outputW,
     h: outputH
   };
-  rows.unshift(row);
+  rows.push(row); // ← thêm vào cuối
   renderTable();
   setStatus('Đã thêm hàng: ' + row.id);
   hideSelection();
